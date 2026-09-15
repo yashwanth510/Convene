@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: convene-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: INVITE_CODE
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: DAILY_RUN_LIMIT
+        value: "15"
+      - key: MAX_ACTIVE_RUNS
+        value: "2"
+      - key: DEBATE_PANEL_SIZE
+        value: "4"
+      - key: RUN_CALL_BUDGET
+        value: "18"
+      - key: RUN_TOKEN_BUDGET
+        value: "48000"
+      - key: COMPLEX_REQUEST_TIMEOUT
+        value: "300"

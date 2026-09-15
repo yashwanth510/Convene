@@ -1,0 +1,60 @@
+{
+  "checked_at": "2026-09-15T03:59:22.990952+00:00",
+  "results": [
+    {
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "http": 200,
+      "has_content": true,
+      "finish_reason": "stop",
+      "actual_model": "openai/gpt-oss-120b"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "http": 200,
+      "has_content": true,
+      "finish_reason": "stop",
+      "actual_model": "nvidia/nemotron-3-super-120b-a12b:free"
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "http": 200,
+      "has_content": false,
+      "finish_reason": null,
+      "actual_model": null
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "http": 200,
+      "has_content": true,
+      "finish_reason": "stop",
+      "actual_model": "nvidia/nemotron-3.5-lightning:free"
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-medium-latest",
+      "http": 429,
+      "status": "rate limited; key validity not conclusive"
+    },
+    {
+      "provider": "cerebras",
+      "model": "gpt-oss-120b",
+      "http": 402,
+      "status": "billing required"
+    },
+    {
+      "provider": "sambanova",
+      "model": "DeepSeek-V3.2",
+      "http": 402,
+      "status": "billing required"
+    },
+    {
+      "provider": "tavily",
+      "http": 200,
+      "has_results": true
+    }
+  ]
+}

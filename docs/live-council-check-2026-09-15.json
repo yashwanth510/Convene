@@ -1,0 +1,108 @@
+{
+  "status": "complete",
+  "positions": [
+    "openai/gpt-oss-120b",
+    "nvidia/nemotron-3.5-lightning:free",
+    "cohere/north-mini-code:free"
+  ],
+  "has_answer": true,
+  "evidence_status": "unknown",
+  "usage": {
+    "calls": 7,
+    "total_tokens": 11452,
+    "token_budget": 48000,
+    "reported_cost_usd": 0,
+    "cost_complete": false,
+    "estimated_tokens": true,
+    "records": [
+      {
+        "model_id": "openrouter_gpt_oss_20b",
+        "actual_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "provider": "openrouter",
+        "input_tokens": 204,
+        "output_tokens": 0,
+        "total_tokens": 204,
+        "estimated": true,
+        "cost_usd": null,
+        "status": "failed",
+        "duration_ms": 1182
+      },
+      {
+        "model_id": "groq_llama",
+        "actual_model": "openai/gpt-oss-120b",
+        "provider": "groq",
+        "input_tokens": 215,
+        "output_tokens": 581,
+        "total_tokens": 796,
+        "estimated": false,
+        "cost_usd": null,
+        "status": "ok",
+        "duration_ms": 1808
+      },
+      {
+        "model_id": "openrouter_owl_alpha",
+        "actual_model": "nvidia/nemotron-3.5-lightning:free",
+        "provider": "openrouter",
+        "input_tokens": 172,
+        "output_tokens": 1837,
+        "total_tokens": 2009,
+        "estimated": false,
+        "cost_usd": 0,
+        "status": "ok",
+        "duration_ms": 46754
+      },
+      {
+        "model_id": "openrouter_gpt_oss_120b",
+        "actual_model": "cohere/north-mini-code:free",
+        "provider": "openrouter",
+        "input_tokens": 137,
+        "output_tokens": 496,
+        "total_tokens": 633,
+        "estimated": false,
+        "cost_usd": 0,
+        "status": "ok",
+        "duration_ms": 56172
+      },
+      {
+        "model_id": "groq_llama",
+        "actual_model": "openai/gpt-oss-120b",
+        "provider": "groq",
+        "input_tokens": 1611,
+        "output_tokens": 789,
+        "total_tokens": 2400,
+        "estimated": false,
+        "cost_usd": null,
+        "status": "ok",
+        "duration_ms": 2220
+      },
+      {
+        "model_id": "openrouter_owl_alpha",
+        "actual_model": "nvidia/nemotron-3.5-lightning:free",
+        "provider": "openrouter",
+        "input_tokens": 1735,
+        "output_tokens": 900,
+        "total_tokens": 2635,
+        "estimated": false,
+        "cost_usd": 0,
+        "status": "failed",
+        "duration_ms": 18482
+      },
+      {
+        "model_id": "groq_llama",
+        "actual_model": "openai/gpt-oss-120b",
+        "provider": "groq",
+        "input_tokens": 1695,
+        "output_tokens": 1080,
+        "total_tokens": 2775,
+        "estimated": false,
+        "cost_usd": null,
+        "status": "ok",
+        "duration_ms": 3095
+      }
+    ]
+  },
+  "warnings": [
+    "Nemotron 3 Super 120B (free): returned no answer text",
+    "Nemotron 3.5 Lightning (free): answer stopped before completion"
+  ]
+}
