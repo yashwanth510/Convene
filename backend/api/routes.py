@@ -11,7 +11,7 @@ from backend.api.auth import current_user
 from backend.api.schemas import RunRequest, Feedback
 from backend.config import config
 from backend.storage.database import TERMINAL
-from backend.utils.document_parser import parse_document
+from backend.utils.document_parser import parse_document, SUPPORTED_EXTENSIONS
 
 router = APIRouter()
 
@@ -92,13 +92,7 @@ async def start_run(
         )
     ):
         raise HTTPException(422, "The synthesizer must be one of your enabled models")
-    if len(request.app.state.runs.tasks) >= config.MAX_ACTIVE_RUNS * 4:
-        raise HTTPException(429, "The queue is full. Please try again shortly.")
-    row, created = await request.app.state.db.create_run(
-        user["id"], cid, body.model_dump(), config.DAILY_RUN_LIMIT
-    )
-    if created:
-        request.app.state.runs.start(row)
+    row = await request.app.state.runs.submit(user["id"], cid, body.model_dump())
     return {"id": row["id"], "status": row["status"], "conversation_id": cid}
 
 
@@ -197,11 +191,10 @@ async def parse_files(
     if len(files) > 3:
         raise HTTPException(422, "Attach at most three files")
     output = []
-    allowed = {".txt", ".md", ".pdf", ".docx", ".csv", ".json", ".py", ".js", ".ts"}
     for upload in files:
         try:
             name = (upload.filename or "document")[:200]
-            if Path(name).suffix.lower() not in allowed:
+            if Path(name).suffix.lower() not in SUPPORTED_EXTENSIONS:
                 raise HTTPException(
                     422, "Use a text, Markdown, PDF, DOCX, CSV, JSON or source file"
                 )
@@ -230,8 +223,8 @@ async def parse_files(
             output.append(
                 {
                     "name": name,
-                    "text": parsed.text[:24000],
-                    "truncated": len(parsed.text) > 24000,
+                    "text": parsed.text,
+                    "truncated": parsed.truncated,
                 }
             )
         except HTTPException:

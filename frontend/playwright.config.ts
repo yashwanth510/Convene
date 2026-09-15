@@ -5,7 +5,7 @@ export default defineConfig({
   workers: 1,
   timeout: 30000,
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: "http://127.0.0.1:5183",
     headless: true,
     launchOptions: process.env.PLAYWRIGHT_CHROME_PATH
       ? { executablePath: process.env.PLAYWRIGHT_CHROME_PATH }
@@ -14,14 +14,15 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "../.venv/bin/python -m uvicorn tests.browser_server:app --app-dir .. --host 127.0.0.1 --port 8001",
-      url: "http://127.0.0.1:8001/api/health",
+        "../.venv/bin/python -m uvicorn tests.browser_server:app --app-dir .. --host 127.0.0.1 --port 8011",
+      url: "http://127.0.0.1:8011/api/health",
       reuseExistingServer: false,
       timeout: 30000,
     },
     {
-      command: "npm run dev -- --host 127.0.0.1",
-      url: "http://127.0.0.1:5173",
+      command: "npm run dev -- --host 127.0.0.1 --port 5183 --strictPort",
+      env: { API_PROXY_TARGET: "http://127.0.0.1:8011" },
+      url: "http://127.0.0.1:5183",
       reuseExistingServer: false,
     },
   ],

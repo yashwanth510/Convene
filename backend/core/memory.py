@@ -163,14 +163,6 @@ class ConversationMemory:
         if len(self.messages) > self.max_messages:
             self.messages = self.messages[-self.max_messages :]
 
-    def add_many(self, items):
-        for item in items:
-            if hasattr(item, "id") and hasattr(item, "role"):
-                self.add(item.id, item.role, item.content or "")
-
-    def __len__(self):
-        return len(self.messages)
-
     # ──────────────────────────────────────────────────────────────────────────
     # Search
     # ──────────────────────────────────────────────────────────────────────────

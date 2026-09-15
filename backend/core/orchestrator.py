@@ -135,13 +135,8 @@ class Orchestrator:
             raise ProviderFailure(
                 "No selected model is available. Check model settings or try again after the rate limit resets."
             )
-        # Explicit free models first; Mistral remains an optional additional participant.
-        available.sort(
-            key=lambda m: (
-                m["provider"] == "mistral",
-                m["api_model"] == "openrouter/free",
-            )
-        )
+        # Prefer explicit model identities before the variable free router.
+        available.sort(key=lambda m: m["api_model"] == "openrouter/free")
         panel = available[: request["panel_size"]]
         if mode == "fast":
             panel = panel[:1]
@@ -281,7 +276,7 @@ class Orchestrator:
                         'Rank these anonymized positions for accuracy, relevance and evidence. Return JSON {"ranking":["P1","P2"],"feedback":"specific problems to fix"}. Include every ID exactly once, best first.\n'
                         + json.dumps(anon),
                         self.budget,
-                        max_tokens=900,
+                        max_tokens=3000,
                     )
                     parsed = parse_json(response.content)
                     order = parsed.get("ranking") if isinstance(parsed, dict) else None
@@ -316,12 +311,6 @@ class Orchestrator:
                         agent_id=p["id"],
                         model_name=p["model_name"],
                         content=p["content"],
-                        confidence=0,
-                        reasoning="",
-                        top_3_recommendations=[],
-                        naive_approach_rejected="",
-                        critical_risk="",
-                        sources_used=[],
                         timestamp=datetime.now(timezone.utc),
                     )
                     for p in positions

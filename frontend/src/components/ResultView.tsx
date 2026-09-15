@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Copy, Check, ExternalLink, ThumbsUp, ThumbsDown } from "lucide-react";
-import MarkdownContent from "../MarkdownContent";
+import MarkdownContent from "./Markdown";
 import { request } from "../lib/api";
 import type { Result } from "../lib/types";
 export default function ResultView({

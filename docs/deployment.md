@@ -1,49 +1,123 @@
-# Deploy Convene
+# Deployment guide
 
-Repository: https://github.com/yashwanth510/Convene
+Deploy the frontend on Cloudflare Pages, the backend on Render Free, and persistent data on Neon. The repository already contains the Dockerfile and Render configuration. You will create the hosted services through their dashboards.
 
-The app is configured for Cloudflare Pages → Render → Neon. API keys stay on Render; only the public API URL goes into the frontend.
+## Before deployment
 
-## 1. Backend: Render
+1. Run the local checks in the [README](../README.md#validation).
+2. Push the repository to [GitHub](https://github.com/yashwanth510/Convene).
+3. Keep the Neon DATABASE_URL and provider keys in your local .env until you copy them into Render's environment settings. Never add them to GitHub files or frontend variables.
 
-1. Connect the GitHub repository in Render and create a **Blueprint** from render.yaml. Use the Free plan.
-2. Supply DATABASE_URL from Neon's Connect dialog (PostgreSQL, SSL enabled).
-3. Add GROQ_API_KEY and OPENROUTER_API_KEY. Add TAVILY_API_KEY for web search and MISTRAL_API_KEY if you want Mistral. Leave unused optional keys empty.
-4. Set CORS_ORIGINS to a JSON array containing the exact frontend origin, for example `["https://convene.pages.dev"]`. Replace this example with your actual Pages address.
-5. Render generates INVITE_CODE. Save it privately; account creation requires this code. It must be at least 16 characters.
-6. Deploy. The Docker command starts one Uvicorn worker and the application creates missing database tables. Check `https://YOUR-SERVICE.onrender.com/api/health`.
+## 1. Deploy the backend on Render
 
-If creating a web service manually, select Docker, repository root, Free plan, health path /api/health, and copy the environment variables from render.yaml. APP_ENV must be production. Do not add a second worker/replica.
+In the [Render dashboard](https://dashboard.render.com/), choose **New → Web Service**, connect GitHub, and select Convene.
 
-## 2. Frontend: Cloudflare Pages
+| Setting | Value |
+| --- | --- |
+| Branch | main |
+| Language/runtime | Docker |
+| Root directory | Leave empty; use the repository root |
+| Dockerfile path | ./Dockerfile |
+| Instance type | Free |
+| Health check path | /api/health |
 
-Connect the GitHub repository to a Pages project with these settings:
+Add these environment variables before deploying:
+
+| Variable | Value |
+| --- | --- |
+| APP_ENV | production |
+| DEBUG | false |
+| DATABASE_URL | Your Neon PostgreSQL connection string, including SSL parameters |
+| GROQ_API_KEY | Your Groq key |
+| OPENROUTER_API_KEY | Your OpenRouter key |
+| QWEN_API_KEY | Your working QwenCloud key |
+| QWEN_BASE_URL | https://dashscope-intl.aliyuncs.com/compatible-mode/v1 |
+| QWEN_MODEL | qwen-plus |
+| TAVILY_API_KEY | Your Tavily key; optional if you do not use web search |
+| INVITE_CODE | A private random value of at least 16 characters |
+| CORS_ORIGINS | An array with the exact Pages origin, such as ["https://YOUR-PROJECT.pages.dev"] |
+| MAX_ACTIVE_RUNS | 2 |
+| DEBATE_PANEL_SIZE | 4 |
+| DAILY_RUN_LIMIT | 15 |
+| RUN_CALL_BUDGET | 18 |
+| RUN_TOKEN_BUDGET | 48000 |
+| COMPLEX_REQUEST_TIMEOUT | 300 |
+
+Generate an invitation code locally if needed:
+
+```bash
+python3 -c 'import secrets; print(secrets.token_urlsafe(24))'
+```
+
+Keep the code private and share it only with people allowed to register.
+
+Deploy and save the assigned backend URL, for example `https://convene-api-xxxx.onrender.com`. Open `https://YOUR-SERVICE.onrender.com/api/health`; a successful response includes `"status":"ok"` and `"database":"connected"`.
+
+The application initializes missing database tables on startup. The Docker command uses one Uvicorn worker. Do not add workers or another backend instance.
+
+Alternatively, choose **New → Blueprint**, connect this repository, and use [render.yaml](../render.yaml). The Blueprint contains the same configuration and generates INVITE_CODE; you still supply database/API secrets and CORS_ORIGINS.
+
+## 2. Deploy the frontend on Cloudflare Pages
+
+In the [Cloudflare dashboard](https://dash.cloudflare.com/), open **Workers & Pages**, create a **Pages** project, and connect the GitHub repository.
 
 | Setting | Value |
 | --- | --- |
 | Production branch | main |
 | Root directory | frontend |
+| Framework preset | Vite, if offered |
 | Build command | npm run build |
-| Output directory | dist |
+| Build output directory | dist |
 | NODE_VERSION | 22 |
 | VITE_API_BASE | https://YOUR-SERVICE.onrender.com/api |
 
-Deploy, then copy the actual Pages origin into Render's CORS_ORIGINS and redeploy the backend if it changed. For a custom domain, include its exact HTTPS origin too. Preview URLs are not automatically authorized.
+VITE_API_BASE must include **/api**. Use the real Render URL, not the example. This value is public and compiled into the frontend; redeploy the frontend whenever it changes.
 
-Cloudflare's [Vite build guide](https://developers.cloudflare.com/pages/framework-guides/deploy-a-vite3-project/) documents the build command and output directory. VITE_API_BASE is compiled into the bundle: rebuild after changing it. Never add provider keys, DATABASE_URL, or INVITE_CODE to Pages build variables.
+Save and deploy. Cloudflare will assign the actual Pages URL.
 
-## 3. Check the hosted app
+Provider keys, DATABASE_URL, and INVITE_CODE must **never** be added to Pages build variables. Only Render needs those secrets. See Cloudflare's [Vite deployment guide](https://developers.cloudflare.com/pages/framework-guides/deploy-a-vite3-project/) for its build settings.
 
-Create an account using the private invitation code. Ask a short question, check model perspectives, refresh to confirm persistence, test a follow-up, and export the conversation. Sign out and verify the workspace requires authentication. Check a second account cannot access the first account's conversation.
+## 3. Connect the deployed services
 
-## Free hosting expectations
+Copy the exact Pages origin into Render's CORS_ORIGINS, for example:
 
-Render Free sleeps after 15 idle minutes and may take about a minute to wake. Its filesystem is ephemeral, so Neon is necessary for persistent hosted conversations. Render can also restart free services; saved partial answers survive, but an interrupted run needs a new user request. Free service hours and outbound traffic are limited. See [Render's current free-service limits](https://render.com/docs/free).
+```json
+["https://convene.pages.dev"]
+```
 
-The existing working Groq and OpenRouter keys are enough to run a council. Tavily adds web evidence; it is optional. Free model endpoints can rate-limit or disappear, so available models are centralized in backend/config.py and provider failures degrade visibly.
+Use no path or trailing slash. If your actual project has a different URL, use that URL. Save the change and redeploy the backend. Add a custom domain to the array only after you configure it.
 
-## Credentials and database operations
+The frontend talks directly to Render over HTTPS using an authenticated fetch stream. No Cloudflare Function or proxy service is required.
 
-.env and .env.deploy are ignored by Git. If using API-based deployment, place CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, and RENDER_API_KEY in .env.deploy, never in chat or tracked files. Tokens must have permission for the target accounts/projects.
+## 4. Verify the deployed application
 
-Use Neon's dashboard for backups/restore and monitor storage quotas. Deleting a conversation removes its runs, messages, and events, but its daily usage entry remains to prevent quota bypass. Account deletion and retention need an operator-managed procedure until an administration interface is added.
+1. Create an account using the invitation code.
+2. Ask a Quick question with Web search off, then a Council question.
+3. Check that the model list contains only the configured providers.
+4. Turn Web search on for a current-information question and inspect Evidence.
+5. Attach a document, ask a follow-up, refresh, and reopen the conversation.
+6. Test export, cancellation, and sign-out.
+7. Confirm a second account cannot open the first account's conversation.
+
+A missing key disables that model. A provider error is shown as a warning; it does not produce a fabricated answer or confidence score.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Frontend loads but API calls fail | VITE_API_BASE includes /api, the backend health URL works, and CORS_ORIGINS matches the Pages origin |
+| First request takes a while | Render Free may be waking from idle; wait and retry |
+| Backend fails at startup | Neon URL, SSL, APP_ENV, invitation-code length, and HTTPS CORS origins |
+| Qwen rejects authentication | QwenCloud uses the international base URL above; keys and regional endpoints must match |
+| No sources appear | Web search is off, Tavily is unconfigured/unavailable, or no usable source was returned |
+| An answer is interrupted after deployment | Restart recovery retains saved progress; submit a new question to run again |
+
+## Free hosting and data
+
+[Render Free](https://render.com/docs/free) can sleep after 15 idle minutes and can restart at any time. Its local filesystem is temporary. Neon is therefore required for persistent hosted conversations; do not use SQLite on Render.
+
+Provider APIs have their own quotas and billing. A free hosting plan does not make every model call free. Monitor provider usage, Render limits, and Neon storage.
+
+Use the Neon dashboard for backups and recovery. Schema initialization creates missing tables; future changes to existing columns need a migration. This deployment supports one backend process, not concurrent replicas or overlapping rolling deployments.
+
+No service has to be created by a command in this guide. The GitHub push, Render deployment, and Cloudflare deployment remain actions you perform through your terminal and dashboards.

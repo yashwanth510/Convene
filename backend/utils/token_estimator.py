@@ -34,29 +34,3 @@ def estimate_tokens(text: str) -> int:
     est += punct_count * 0.2
 
     return max(1, int(est + 0.5))
-
-
-def estimate_tokens_messages(messages: list[dict] | list[str]) -> int:
-    total = 0
-    for item in messages:
-        if isinstance(item, str):
-            total += estimate_tokens(item) + 3  # small role/sep overhead
-        elif isinstance(item, dict):
-            for v in item.values():
-                if isinstance(v, str):
-                    total += estimate_tokens(v) + 3
-    # ChatML-ish overhead per message
-    total += 4 * len(messages)
-    return total
-
-
-def truncate_to_tokens(text: str, max_tokens: int) -> str:
-    """Truncate *text* roughly so its *estimated* token count <= max_tokens."""
-    if estimate_tokens(text) <= max_tokens:
-        return text
-    # Binary-search-ish approach: start from ratio
-    target_chars = int(max_tokens * 4)
-    out = text[:target_chars]
-    while estimate_tokens(out) > max_tokens and len(out) > 0:
-        out = out[: int(len(out) * 0.9)]
-    return out + "…"

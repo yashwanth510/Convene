@@ -7,12 +7,6 @@ class Position(BaseModel):
     agent_id: str
     model_name: str
     content: str
-    confidence: int = Field(ge=0, le=100)
-    reasoning: str
-    top_3_recommendations: List[str]
-    naive_approach_rejected: str
-    critical_risk: str
-    sources_used: List[str]
     timestamp: datetime
 
 

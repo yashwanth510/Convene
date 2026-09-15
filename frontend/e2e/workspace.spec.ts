@@ -19,7 +19,7 @@ test("sign in, configure models, ask, inspect evidence, reload and export", asyn
     page.getByRole("heading", { name: "What’s on your mind?" }),
   ).toBeVisible();
   await page.screenshot({
-    path: "../docs/convene-desktop.png",
+    path: "test-results/previews/convene-desktop.png",
     fullPage: true,
   });
   await page
@@ -28,6 +28,7 @@ test("sign in, configure models, ask, inspect evidence, reload and export", asyn
   const model = page.getByRole("checkbox", { name: /Nemotron 3.5 Lightning/ });
   await expect(model).toBeChecked();
   await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: "Web search", exact: true }).click();
   await page.getByLabel("Answer approach").selectOption("council");
   await page
     .getByLabel("Your question")
@@ -47,7 +48,10 @@ test("sign in, configure models, ask, inspect evidence, reload and export", asyn
   const exported = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export conversation" }).click();
   expect((await exported).suggestedFilename()).toBe("convene-conversation.md");
-  await page.screenshot({ path: "../docs/convene-answer.png", fullPage: true });
+  await page.screenshot({
+    path: "test-results/previews/convene-answer.png",
+    fullPage: true,
+  });
   await page.reload();
   await page
     .getByRole("navigation", { name: "Conversations" })
@@ -66,10 +70,9 @@ test("mobile layout keeps navigation and composer accessible", async ({
   page,
   request,
 }) => {
-  const registration = await request.post(
-    "http://127.0.0.1:8001/api/auth/register",
-    { data: { email: `mobile-${Date.now()}@example.com`, password } },
-  );
+  const registration = await request.post("/api/auth/register", {
+    data: { email: `mobile-${Date.now()}@example.com`, password },
+  });
   const { token } = await registration.json();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(
@@ -86,9 +89,51 @@ test("mobile layout keeps navigation and composer accessible", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page.screenshot({ path: "../docs/convene-mobile.png", fullPage: true });
+  await page.screenshot({
+    path: "test-results/previews/convene-mobile.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(
     page.getByRole("button", { name: "Council settings", exact: true }),
   ).toBeVisible();
+});
+
+test("slow workspace loading cannot save an empty model selection", async ({
+  page,
+  request,
+}) => {
+  const registered = await request.post("/api/auth/register", {
+    data: { email: `loading-${Date.now()}@example.com`, password },
+  });
+  const { token } = await registered.json();
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/conversations", async (route) => {
+    await pending;
+    await route.continue();
+  });
+  await page.addInitScript(
+    (t) => sessionStorage.setItem("convene-session", t),
+    token,
+  );
+  await page.goto("/");
+  const settings = page.getByRole("button", {
+    name: "Council settings",
+    exact: true,
+  });
+  await expect(settings).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Web search", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByLabel("Answer approach")).toBeDisabled();
+  release();
+  await expect(settings).toBeEnabled();
+  await settings.click();
+  await expect(page.getByRole("checkbox", { name: /Qwen Plus/ })).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: /Nemotron 3.5/ }),
+  ).toBeChecked();
 });

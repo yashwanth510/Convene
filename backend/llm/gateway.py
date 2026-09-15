@@ -11,10 +11,8 @@ from backend.utils.token_estimator import estimate_tokens
 
 BASES = {
     "groq": "https://api.groq.com/openai/v1",
-    "mistral": "https://api.mistral.ai/v1",
     "openrouter": "https://openrouter.ai/api/v1",
-    "cerebras": "https://api.cerebras.ai/v1",
-    "sambanova": "https://api.sambanova.ai/v1",
+    "qwen": config.QWEN_BASE_URL,
 }
 
 
@@ -206,7 +204,10 @@ class Gateway:
             "Authorization": "Bearer "
             + getattr(config, m["provider"].upper() + "_API_KEY")
         }
-        url = BASES[m["provider"]] + "/chat/completions"
+        base = config.QWEN_BASE_URL if m["provider"] == "qwen" else BASES[m["provider"]]
+        url = base + "/chat/completions"
+        if m["provider"] == "qwen":
+            payload["enable_thinking"] = False
         try:
             async with self.global_limit, self.provider_limits[m["provider"]]:
                 # Check again after waiting: another call may have opened the circuit.
@@ -216,7 +217,7 @@ class Gateway:
                 if emit:
                     completed = False
                     payload.update(stream=True)
-                    if m["provider"] in ("groq", "openrouter"):
+                    if m["provider"] in ("groq", "openrouter", "qwen"):
                         payload["stream_options"] = {"include_usage": True}
                     async with self.client.stream(
                         "POST", url, headers=headers, json=payload

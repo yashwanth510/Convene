@@ -17,12 +17,6 @@ def positions():
             agent_id=x,
             model_name=x,
             content=x,
-            confidence=0,
-            reasoning="",
-            top_3_recommendations=[],
-            naive_approach_rejected="",
-            critical_risk="",
-            sources_used=[],
             timestamp=datetime.now(),
         )
         for x in "abc"
@@ -119,9 +113,9 @@ async def test_rate_limit_circuit(provider_keys):
     g = Gateway(httpx.AsyncClient(transport=httpx.MockTransport(response)))
     for _ in range(2):
         with pytest.raises(ProviderFailure):
-            await g.ask("groq_llama", "hello", Budget())
+            await g.ask("groq_gpt_oss", "hello", Budget())
     assert count == 1
-    assert not g.available(g.model("groq_llama"))
+    assert not g.available(g.model("groq_gpt_oss"))
     await g.close()
 
 
@@ -142,7 +136,7 @@ async def test_stream_disconnect_preserves_partial_and_does_not_fallback(provide
         chunks.append(chunk)
 
     with pytest.raises(ProviderFailure):
-        await g.ask("groq_llama", "question", Budget(), stream=receive, fallback=True)
+        await g.ask("groq_gpt_oss", "question", Budget(), stream=receive, fallback=True)
     assert chunks == ["partial answer"] and count == 1
     await g.close()
 
@@ -333,3 +327,101 @@ def test_malformed_evidence_remains_unknown():
         {"claims": [{"claim": "Example", "source_id": [], "status": "supported"}]}, []
     )
     assert rows[0]["status"] == "unknown"
+
+
+async def test_retry_is_idempotent_even_when_queue_is_full(client, monkeypatch):
+    c, app = client
+    headers = await register(c)
+    cid = (await c.post("/api/conversations", headers=headers)).json()["id"]
+    body = {"content": "Hello", "request_key": "full-queue-retry", "mode": "fast"}
+    first = await c.post(f"/api/conversations/{cid}/runs", headers=headers, json=body)
+    task = app.state.runs.tasks.get(first.json()["id"])
+    if task:
+        await task
+    # A zero admission capacity exercises retries while rejecting new work.
+    monkeypatch.setattr(config, "MAX_ACTIVE_RUNS", 0)
+    retry = await c.post(f"/api/conversations/{cid}/runs", headers=headers, json=body)
+    assert retry.status_code == 202
+    assert retry.json()["id"] == first.json()["id"]
+    body["request_key"] = "new-work-while-full"
+    assert (
+        await c.post(f"/api/conversations/{cid}/runs", headers=headers, json=body)
+    ).status_code == 429
+
+
+async def test_search_is_opt_in_and_sends_only_the_question(provider_keys):
+    from backend.core.evidence import EvidenceService
+
+    requests = []
+
+    def handler(request):
+        import json
+
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={"results": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        service = EvidenceService(http)
+        await service.search("A current question", False)
+        assert not requests
+        await service.search("A current question", True)
+        await service.search("A current question", True)
+        assert len(requests) == 1  # Reuses the five-minute cache.
+        assert requests[0]["query"] == "A current question"
+        assert "documents" not in requests[0]
+
+
+async def test_removed_models_cannot_be_selected(client):
+    c, _ = client
+    h = await register(c)
+    cid = (await c.post("/api/conversations", headers=h)).json()["id"]
+    for model in [
+        "mistral_large",
+        "cerebras_gpt_oss_120b",
+        "sambanova_deepseek_v32",
+        "openrouter_gpt_oss_20b",
+    ]:
+        r = await c.post(
+            f"/api/conversations/{cid}/runs",
+            headers=h,
+            json={
+                "content": "Hello",
+                "request_key": "removed-model-check",
+                "enabled_models": [model],
+            },
+        )
+        assert r.status_code == 422
+
+
+async def test_cancellation_waits_for_inflight_database_write(client, monkeypatch):
+    c, app = client
+    headers = await register(c)
+    conv = (await c.post("/api/conversations", headers=headers)).json()["id"]
+    db = app.state.runs.db
+    written, release = asyncio.Event(), asyncio.Event()
+    original = db._event
+
+    async def paused_event(connection, rid, kind, data):
+        await original(connection, rid, kind, data)
+        if kind == "queued":
+            written.set()
+            await release.wait()
+
+    monkeypatch.setattr(db, "_event", paused_event)
+    response = await c.post(
+        f"/api/conversations/{conv}/runs",
+        headers=headers,
+        json={"content": "Hello", "request_key": "cancel-during-write"},
+    )
+    assert response.status_code == 202
+    rid = response.json()["id"]
+    await asyncio.wait_for(written.wait(), 5)
+    cancellation = asyncio.create_task(c.post(f"/api/runs/{rid}/cancel", headers=headers))
+    try:
+        await asyncio.sleep(0.05)
+        assert not cancellation.done()
+    finally:
+        release.set()
+    assert (await asyncio.wait_for(cancellation, 5)).status_code == 204
+    assert (await c.get(f"/api/runs/{rid}", headers=headers)).json()["status"] == "cancelled"
+    assert (await c.get(f"/api/conversations/{conv}", headers=headers)).json()["active_run_id"] is None

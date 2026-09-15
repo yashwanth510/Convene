@@ -70,7 +70,7 @@ export default function Settings({
                 change({ ...value, panel_size: Number(e.target.value) })
               }
             >
-              {[2, 3, 4, 5].map((n) => (
+              {[2, 3, 4].map((n) => (
                 <option key={n}>{n}</option>
               ))}
             </select>

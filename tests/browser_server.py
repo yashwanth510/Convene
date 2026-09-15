@@ -12,7 +12,7 @@ config.INVITE_CODE = ""
 for field in (
     "GROQ_API_KEY",
     "OPENROUTER_API_KEY",
-    "MISTRAL_API_KEY",
+    "QWEN_API_KEY",
     "TAVILY_API_KEY",
 ):
     setattr(config, field, "synthetic-test-key")

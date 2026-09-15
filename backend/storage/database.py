@@ -392,6 +392,21 @@ class Database:
             )
         return row, True
 
+    async def run_for_request(self, owner, request_key):
+        async with self.engine.connect() as c:
+            row = (
+                (
+                    await c.execute(
+                        select(runs).where(
+                            runs.c.owner_id == owner, runs.c.request_key == request_key
+                        )
+                    )
+                )
+                .mappings()
+                .first()
+            )
+        return dict(row) if row else None
+
     async def get_run(self, owner, rid):
         async with self.engine.connect() as c:
             row = (

@@ -1,5 +1,6 @@
 """Minimal live provider checks; prints statuses, never credentials or raw errors."""
 
+import argparse
 import asyncio
 import json
 from datetime import datetime, timezone
@@ -8,11 +9,13 @@ from backend.config import config
 from backend.llm.gateway import BASES
 
 
-async def main():
+async def main(only=None):
     results = []
     async with httpx.AsyncClient(timeout=90) as client:
         for model in config.MODELS:
             provider = model["provider"]
+            if only and only != provider:
+                continue
             key = getattr(config, provider.upper() + "_API_KEY", "")
             if provider not in BASES or not key:
                 results.append(
@@ -37,6 +40,7 @@ async def main():
                             }
                         ],
                         "max_tokens": 3000,
+                        **({"enable_thinking": False} if provider == "qwen" else {}),
                     },
                 )
                 record["http"] = r.status_code
@@ -44,6 +48,10 @@ async def main():
                     data = r.json()
                     choice = (data.get("choices") or [{}])[0]
                     record.update(
+                        status="working"
+                        if choice.get("message", {}).get("content")
+                        and choice.get("finish_reason") == "stop"
+                        else "no complete answer",
                         has_content=bool(choice.get("message", {}).get("content")),
                         finish_reason=choice.get("finish_reason"),
                         actual_model=data.get("model"),
@@ -59,7 +67,7 @@ async def main():
             except (httpx.HTTPError, ValueError):
                 record["status"] = "connection or response error"
             results.append(record)
-        if config.TAVILY_API_KEY:
+        if config.TAVILY_API_KEY and only in (None, "tavily"):
             try:
                 r = await client.post(
                     "https://api.tavily.com/search",
@@ -92,4 +100,6 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--provider", choices=["groq", "openrouter", "qwen", "tavily"])
+    asyncio.run(main(parser.parse_args().provider))

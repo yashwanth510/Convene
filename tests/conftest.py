@@ -12,7 +12,7 @@ def provider_keys(monkeypatch):
     for name in [
         "GROQ_API_KEY",
         "OPENROUTER_API_KEY",
-        "MISTRAL_API_KEY",
+        "QWEN_API_KEY",
         "TAVILY_API_KEY",
     ]:
         monkeypatch.setattr(config, name, "synthetic-test-key")
