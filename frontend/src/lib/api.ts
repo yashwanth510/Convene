@@ -1,7 +1,7 @@
 import { SSEDecoder, type StreamEvent } from "./sse";
 const BASE =
   (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ||
-  "/api";
+  "https://convene-qgfr.onrender.com/api";
 export function getToken() {
   return sessionStorage.getItem("convene-session") || "";
 }
