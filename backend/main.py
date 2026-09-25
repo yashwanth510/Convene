@@ -110,7 +110,7 @@ def create_app(database_url=None, gateway_factory=Gateway):
     app.include_router(router, prefix="/api")
     app.include_router(admin_router, prefix="/api/admin")
 
-    @app.get("/")
+    @app.api_route("/", methods=["GET", "HEAD"])
     async def root():
         return {"app": "Convene", "version": "1.0.0"}
 
