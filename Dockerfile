@@ -4,6 +4,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY backend ./backend
 RUN pip install --no-cache-dir . && useradd --create-home convene && mkdir -p /app/data && chown -R convene:convene /app
+RUN python -c "import greenlet; from backend.main import app"
 USER convene
 EXPOSE 8001
 CMD ["sh", "-c", "python -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8001} --workers 1 --timeout-graceful-shutdown 25"]

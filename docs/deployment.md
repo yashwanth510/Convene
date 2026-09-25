@@ -150,3 +150,9 @@ Submission counts survive conversation deletion. Outcomes and recorded tokens co
 If Render logs show `error parsing value for field "ADMIN_USER_IDS"`, the older backend expected a JSON array. To restore service immediately, set its value to `[]` (admin access disabled), or `["YOUR-EXISTING-ACCOUNT-ID"]`, and redeploy. Enter only the value in Render's value field, without `ADMIN_USER_IDS=` or surrounding single quotes.
 
 The updated backend also accepts a single account ID or comma-separated IDs. An empty value disables admin access. Malformed JSON and non-string list entries are rejected with a clear configuration error. Account IDs still have to match existing users; these formats do not grant access by email or create admin accounts.
+
+### Missing greenlet during startup
+
+If the backend reports that SQLAlchemy asyncio requires `greenlet`, deploy the dependency fix in `pyproject.toml`: `sqlalchemy[asyncio]>=2.0,<3`. The Docker image installs this extra and verifies the backend import at build time. This is a dependency problem, not an API key or Neon connection error; no environment changes are needed.
+
+Push the updated code, then deploy that commit on Render. Check the deploy's commit ID and its build logs before checking `/api/health`: an older successful service can remain healthy while a newer deployment fails. If a stale build persists, use Render's clear-build-cache deployment option.
