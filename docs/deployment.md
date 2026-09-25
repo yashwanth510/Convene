@@ -121,3 +121,26 @@ Provider APIs have their own quotas and billing. A free hosting plan does not ma
 Use the Neon dashboard for backups and recovery. Schema initialization creates missing tables; future changes to existing columns need a migration. This deployment supports one backend process, not concurrent replicas or overlapping rolling deployments.
 
 No service has to be created by a command in this guide. The GitHub push, Render deployment, and Cloudflare deployment remain actions you perform through your terminal and dashboards.
+
+## Private admin dashboard
+
+The dashboard is disabled by default. Access uses existing account IDs, not email claims or a special frontend password. No database migration is required.
+
+1. Sign up normally and find your existing account ID in Neon SQL Editor:
+
+   ```sql
+   SELECT id, email FROM users WHERE email = 'your-email@example.com';
+   ```
+
+2. In the Render backend's Environment settings, set `ADMIN_USER_IDS` to a JSON array containing your account ID:
+
+   ```json
+   ["YOUR-EXISTING-ACCOUNT-ID"]
+   ```
+
+3. Deploy this backend and frontend update, save the Render setting and redeploy, then refresh the app or sign in again. **Admin dashboard** appears in your sidebar.
+4. To revoke access, remove the ID from `ADMIN_USER_IDS` and redeploy the backend. Every admin request checks the current server configuration. Never add this setting to frontend build variables.
+
+The read-only dashboard shows total accounts, signups by UTC day, active users, submitted questions, saved conversations, run outcomes, recorded tokens, and paginated account emails with signup and last-question times. The period includes today and the previous 6, 29, or 89 UTC calendar days. Account and conversation totals are all-time; the account list is independent of the selected period. Active users submitted at least one question in the period; they are not necessarily online now.
+
+Submission counts survive conversation deletion. Outcomes and recorded tokens cover only saved runs in the period, and token totals are not provider billing records. Prompts, answers, uploaded documents, password hashes, session tokens, and API keys are not exposed. For exception traces and deployment failures, continue to use Render Logs.

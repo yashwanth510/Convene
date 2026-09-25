@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from backend.api.admin import router as admin_router
 from backend.api.routes import router
 from backend.api.auth import router as auth_router
 from backend.config import config
@@ -107,6 +108,7 @@ def create_app(database_url=None, gateway_factory=Gateway):
 
     app.include_router(auth_router, prefix="/api/auth")
     app.include_router(router, prefix="/api")
+    app.include_router(admin_router, prefix="/api/admin")
 
     @app.get("/")
     async def root():

@@ -49,6 +49,12 @@ async def current_user(
     user = await request.app.state.db.user_for_token(auth.credentials) if auth else None
     if not user:
         raise HTTPException(401, "Please sign in to continue")
+    return {**user, "is_admin": user["id"] in config.ADMIN_USER_IDS}
+
+
+async def current_admin(user=Depends(current_user)):
+    if not user["is_admin"]:
+        raise HTTPException(403, "Administrator access required")
     return user
 
 
@@ -84,7 +90,10 @@ async def issue_session(db, uid, email):
                 expires=time.time() + config.SESSION_DAYS * 86400,
             )
         )
-    return {"token": token, "user": {"id": uid, "email": email}}
+    return {
+        "token": token,
+        "user": {"id": uid, "email": email, "is_admin": uid in config.ADMIN_USER_IDS},
+    }
 
 
 @router.post("/register", status_code=201)

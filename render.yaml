@@ -29,6 +29,8 @@ services:
         value: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
       - key: QWEN_MODEL
         value: qwen-plus
+      - key: ADMIN_USER_IDS
+        sync: false
       - key: DAILY_RUN_LIMIT
         value: "15"
       - key: MAX_ACTIVE_RUNS

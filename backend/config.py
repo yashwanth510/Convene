@@ -19,6 +19,7 @@ class Config(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///data/convene.db"
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     INVITE_CODE: str = ""
+    ADMIN_USER_IDS: list[str] = []
     SESSION_DAYS: int = 7
     DAILY_RUN_LIMIT: int = 15
     MAX_ACTIVE_RUNS: int = 2

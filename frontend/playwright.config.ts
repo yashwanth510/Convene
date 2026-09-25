@@ -21,7 +21,7 @@ export default defineConfig({
     },
     {
       command: "npm run dev -- --host 127.0.0.1 --port 5183 --strictPort",
-      env: { API_PROXY_TARGET: "http://127.0.0.1:8011" },
+      env: { VITE_API_BASE: "/api", API_PROXY_TARGET: "http://127.0.0.1:8011" },
       url: "http://127.0.0.1:5183",
       reuseExistingServer: false,
     },

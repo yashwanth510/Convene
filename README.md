@@ -8,6 +8,8 @@ Convene is a private workspace for comparing answers from multiple language mode
 
 Answers support Markdown, mathematics, and Mermaid diagrams. The renderer recognizes Mermaid declarations in mislabeled code fences and retries invalid flowcharts with quoted rectangular labels. Incomplete or unsupported diagrams retain their source without displaying repeated error banners.
 
+Administrators can enable a private dashboard for signups, active users, run outcomes, and recorded usage. Access is restricted on the backend to configured account IDs; see [admin setup](docs/deployment.md#private-admin-dashboard).
+
 ## Architecture
 
 ```mermaid

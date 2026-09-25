@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Brand } from "./Auth";
 import SettingsPanel from "./Settings";
+const AdminDashboard = lazy(() => import("./AdminDashboard"));
 const ResultView = lazy(() => import("./ResultView"));
 import { request, download } from "../lib/api";
 import { useRun } from "../lib/useRun";
@@ -81,6 +82,7 @@ export default function Workspace({
   user: User;
   logout: () => void;
 }) {
+  const [adminOpen, setAdminOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [models, setModels] = useState<Model[]>([]);
@@ -327,6 +329,14 @@ export default function Workspace({
         setError("Could not stop the answer. Please try again.");
       }
   }
+  if (adminOpen && user.is_admin)
+    return (
+      <Suspense
+        fallback={<div className="loading-page">Loading dashboard…</div>}
+      >
+        <AdminDashboard close={() => setAdminOpen(false)} />
+      </Suspense>
+    );
   const empty = !conversation?.messages.length && !runId;
   return (
     <div className="workspace">
@@ -396,6 +406,14 @@ export default function Workspace({
           )}
         </nav>
         <div className="sidebar-bottom">
+          {user.is_admin && (
+            <button
+              className="sidebar-settings"
+              onClick={() => setAdminOpen(true)}
+            >
+              Admin dashboard
+            </button>
+          )}
           <div className="workspace-note">
             <span className="model-dot" />
             <div>
