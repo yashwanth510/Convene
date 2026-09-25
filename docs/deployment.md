@@ -132,7 +132,7 @@ The dashboard is disabled by default. Access uses existing account IDs, not emai
    SELECT id, email FROM users WHERE email = 'your-email@example.com';
    ```
 
-2. In the Render backend's Environment settings, set `ADMIN_USER_IDS` to a JSON array containing your account ID:
+2. In the Render backend's Environment settings, set `ADMIN_USER_IDS` to your account ID, a comma-separated list of account IDs, or a JSON array:
 
    ```json
    ["YOUR-EXISTING-ACCOUNT-ID"]
@@ -144,3 +144,9 @@ The dashboard is disabled by default. Access uses existing account IDs, not emai
 The read-only dashboard shows total accounts, signups by UTC day, active users, submitted questions, saved conversations, run outcomes, recorded tokens, and paginated account emails with signup and last-question times. The period includes today and the previous 6, 29, or 89 UTC calendar days. Account and conversation totals are all-time; the account list is independent of the selected period. Active users submitted at least one question in the period; they are not necessarily online now.
 
 Submission counts survive conversation deletion. Outcomes and recorded tokens cover only saved runs in the period, and token totals are not provider billing records. Prompts, answers, uploaded documents, password hashes, session tokens, and API keys are not exposed. For exception traces and deployment failures, continue to use Render Logs.
+
+### Startup error for ADMIN_USER_IDS
+
+If Render logs show `error parsing value for field "ADMIN_USER_IDS"`, the older backend expected a JSON array. To restore service immediately, set its value to `[]` (admin access disabled), or `["YOUR-EXISTING-ACCOUNT-ID"]`, and redeploy. Enter only the value in Render's value field, without `ADMIN_USER_IDS=` or surrounding single quotes.
+
+The updated backend also accepts a single account ID or comma-separated IDs. An empty value disables admin access. Malformed JSON and non-string list entries are rejected with a clear configuration error. Account IDs still have to match existing users; these formats do not grant access by email or create admin accounts.

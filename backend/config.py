@@ -1,9 +1,11 @@
 """Backend settings and the supported model catalog."""
 
+import json
+from typing import Annotated
 from urllib.parse import urlsplit
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Config(BaseSettings):
@@ -19,7 +21,7 @@ class Config(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///data/convene.db"
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     INVITE_CODE: str = ""
-    ADMIN_USER_IDS: list[str] = []
+    ADMIN_USER_IDS: Annotated[list[str], NoDecode] = []
     SESSION_DAYS: int = 7
     DAILY_RUN_LIMIT: int = 15
     MAX_ACTIVE_RUNS: int = 2
@@ -30,6 +32,32 @@ class Config(BaseSettings):
     REQUEST_TIMEOUT: int = 120
     COMPLEX_REQUEST_TIMEOUT: int = 300
     DEBATE_PANEL_SIZE: int = 4
+
+    @field_validator("ADMIN_USER_IDS", mode="before")
+    @classmethod
+    def admin_user_ids(cls, value):
+        message = (
+            "ADMIN_USER_IDS must be an account ID, comma-separated account IDs, "
+            "or a JSON array of strings. Use [] to disable admin access."
+        )
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return []
+            if value.startswith(("[", "{", '"')):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError:
+                    raise ValueError(message) from None
+                if isinstance(value, str):
+                    value = [value]
+            else:
+                value = value.split(",")
+        if not isinstance(value, list) or any(
+            not isinstance(item, str) for item in value
+        ):
+            raise ValueError(message)
+        return list(dict.fromkeys(item.strip() for item in value if item.strip()))
 
     @field_validator("DEBUG", mode="before")
     @classmethod
