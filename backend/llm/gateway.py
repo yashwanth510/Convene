@@ -178,6 +178,15 @@ class Gateway:
                         break
         raise last
 
+    @staticmethod
+    def _incomplete(model, reason):
+        details = {
+            "length": "response reached its output token limit; the saved answer is incomplete",
+            "content_filter": "provider filtered the response before completion",
+            "error": "provider reported an error before completion",
+        }
+        return ProviderFailure(f"{model['name']}: {details[reason]}")
+
     async def _call(
         self, m, prompt, budget, max_tokens, emit: Callable[[str], Awaitable] | None
     ):
@@ -188,6 +197,7 @@ class Gateway:
         actual = m["api_model"]
         status = "failed"
         sent = False
+        finish_reason = None
         payload = {
             "model": m["api_model"],
             "messages": [
@@ -208,6 +218,10 @@ class Gateway:
         url = base + "/chat/completions"
         if m["provider"] == "qwen":
             payload["enable_thinking"] = False
+        if m["provider"] == "openrouter":
+            payload["reasoning"] = {"exclude": True}
+            if m["id"] == "nemotron_lightning":
+                payload["reasoning"]["enabled"] = False
         try:
             async with self.global_limit, self.provider_limits[m["provider"]]:
                 # Check again after waiting: another call may have opened the circuit.
@@ -252,16 +266,16 @@ class Gateway:
                             choices = data.get("choices") or []
                             if choices:
                                 reason = choices[0].get("finish_reason")
-                                if reason in ("length", "error", "content_filter"):
-                                    raise ProviderFailure(
-                                        f"{m['name']}: answer stopped before completion"
-                                    )
-                                if reason == "stop":
-                                    completed = True
                                 chunk = choices[0].get("delta", {}).get("content") or ""
                                 content += chunk
                                 if chunk:
                                     await emit(chunk)
+                                if reason:
+                                    finish_reason = reason
+                                if reason in ("length", "error", "content_filter"):
+                                    raise self._incomplete(m, reason)
+                                if reason == "stop":
+                                    completed = True
                         if not completed:
                             raise ProviderFailure(
                                 f"{m['name']}: stream ended unexpectedly"
@@ -281,14 +295,13 @@ class Gateway:
                     content = (
                         choices[0].get("message", {}).get("content") if choices else ""
                     )
-                    if choices and choices[0].get("finish_reason") in (
+                    finish_reason = choices[0].get("finish_reason") if choices else None
+                    if finish_reason in (
                         "length",
                         "error",
                         "content_filter",
                     ):
-                        raise ProviderFailure(
-                            f"{m['name']}: answer stopped before completion"
-                        )
+                        raise self._incomplete(m, finish_reason)
                     actual = data.get("model") or actual
                     usage = data.get("usage") or {}
                 if not content or not content.strip():
@@ -327,6 +340,7 @@ class Gateway:
                     "estimated": not bool(usage),
                     "cost_usd": usage.get("cost"),
                     "status": status,
+                    "finish_reason": finish_reason,
                     "duration_ms": round((time.monotonic() - start) * 1000),
                 },
             )
